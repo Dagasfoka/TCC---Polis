@@ -1,4 +1,8 @@
-const socket = new WebSocket("ws://" + location.host + "/ws")
+const socket = new WebSocket(
+  (location.protocol === "https:" ? "wss://" : "ws://") +
+  location.host +
+  "/ws"
+)
 
 // quando conecta
 socket.onopen = function() {
