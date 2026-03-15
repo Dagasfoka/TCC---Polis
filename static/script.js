@@ -6,14 +6,13 @@ const socket = new WebSocket(
 
 // quando conecta
 socket.onopen = function() {
-    console.log("Conectado ao servidor")
     alert("Conectado ao servidor")
 }
 
 // quando recebe mensagem
 socket.onmessage = function(event) {
     console.log("Mensagem recebida:", event.data)
-    alert("Mensagem recebida: " + event.data)
+    alert(event.data + " mandou um olá")
 }
 
 // quando desconecta
@@ -22,7 +21,9 @@ socket.onclose = function() {
 }
 
 // botão enviar
+
+
 function enviar() {
-    console.log("Enviando mensagem")
-    socket.send("Jogador clicou")
+    const name = document.getElementById("playerName").value
+    socket.send(name)
 }
