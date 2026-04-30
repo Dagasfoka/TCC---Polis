@@ -1,0 +1,1 @@
+# Status geral da partida.

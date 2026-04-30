@@ -1,0 +1,1 @@
+# Ataque, defesa, turno, vitória, mapa.

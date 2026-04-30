@@ -1,0 +1,1 @@
+# Gerar UUID, códigos de sala, tokens auxiliares.

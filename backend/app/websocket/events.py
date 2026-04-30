@@ -1,0 +1,1 @@
+# Constantes/tipos de evento: ATTACK, JOIN, ERROR etc.

@@ -1,0 +1,1 @@
+# Criar sala, entrar, sair, iniciar partida.

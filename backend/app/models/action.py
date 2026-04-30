@@ -1,0 +1,1 @@
+# Ações possíveis: atacar, defender, pegunta no turno.

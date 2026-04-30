@@ -1,0 +1,1 @@
+# Busca/salva salas temporárias no Redis.

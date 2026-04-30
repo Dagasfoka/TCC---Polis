@@ -1,6 +1,7 @@
+# Guarda conexões ativas e faz broadcast por sala.
 from fastapi import WebSocket
 
-
+#esse codigo tem que ser mudado para funcionar com redis e db
 class ConnectionManager:
     def __init__(self):
         self.connections: list[WebSocket] = []
