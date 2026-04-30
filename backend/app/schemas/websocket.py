@@ -1,0 +1,1 @@
+# Formato das mensagens WebSocket.

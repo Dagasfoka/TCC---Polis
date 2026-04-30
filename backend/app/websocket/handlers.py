@@ -1,0 +1,1 @@
+# Recebe mensagem WebSocket e chama o service correto.

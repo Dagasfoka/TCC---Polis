@@ -1,0 +1,1 @@
+# Variáveis de ambiente: DB_URL, REDIS_URL, JWT_SECRET etc.

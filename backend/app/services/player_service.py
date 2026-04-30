@@ -1,0 +1,1 @@
+# Criar jogador, nickname, recursos.

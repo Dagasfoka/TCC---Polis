@@ -1,0 +1,1 @@
+# Erros personalizados do projeto.

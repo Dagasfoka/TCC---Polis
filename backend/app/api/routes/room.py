@@ -1,0 +1,1 @@
+# Criar sala, entrar em sala, sair da sala.

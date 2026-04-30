@@ -54,3 +54,7 @@ post_test = "coverage html"
 check = "ruff check ."
 lint = "ruff check . && ruff check . --diff"
 format = "ruff check . --fix && ruff format ."
+
+update_gitignore = "powershell -Command \"if (!(Test-Path .gitignore)) { New-Item .gitignore | Out-Null }; $lines = @('.env','.env.*','.vscode/','*.log','*.db','dump.rdb'); foreach ($line in $lines) { if (-not (Select-String -Path .gitignore -Pattern ('^' + [regex]::Escape($line) + '$') -Quiet)) { Add-Content .gitignore $line } }\""
+
+export_requirements = "poetry export -f requirements.txt --output requirements.txt --without-hashes --all-groups"

@@ -1,0 +1,1 @@
+# Jogador dentro de uma partida.

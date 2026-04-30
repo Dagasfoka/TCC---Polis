@@ -1,3 +1,4 @@
+# Endpoint WebSocket da partida.
 from fastapi import APIRouter, WebSocket
 from starlette.websockets import WebSocketDisconnect
 

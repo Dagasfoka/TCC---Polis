@@ -1,0 +1,1 @@
+# Dependências reutilizáveis das rotas.
