@@ -1,1 +1,0 @@
-# Estado/território do mapa.

@@ -1,1 +1,0 @@
-# Busca/salva estado da partida no Redis.
