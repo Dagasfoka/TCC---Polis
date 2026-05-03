@@ -180,3 +180,10 @@ pyrightconfig.json
 .vscode/
 *.db
 dump.rdb
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+#SQlite
+polis.db

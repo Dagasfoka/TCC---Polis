@@ -7,6 +7,6 @@ templates = Jinja2Templates(directory='templates')
 
 @router.get('/')
 async def get_index(request: Request):
-    return templates.TemplateResponse('index.html', {'request': request})
+    return templates.TemplateResponse('index_backend.html', {'request': request})
 
 router.include_router(router_match)

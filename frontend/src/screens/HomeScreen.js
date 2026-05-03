@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AVATARS } from './Data';
+import { AVATARS } from './polis/Data';
 import AuthOverlay from './components/AuthOverlay';
 
 function HomeScreen({onEnterLobby,onCreateLobby,flash}){

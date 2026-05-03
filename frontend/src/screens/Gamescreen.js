@@ -1,9 +1,9 @@
 import { useState, useMemo } from 'react';
 
-import GameTopHud from './components/game/GameHudTop';
-import GameMap from './components/game/GameMap';
-import GameSidebar from './components/game/GameSidebar';
-import GameBottomHud from './components/game/GameBottomHud';
+import GameTopHud from '../components/game/GameHudTop';
+import GameMap from '../components/game/GameMap';
+import GameSidebar from '../components/game/GameSidebar';
+import GameBottomHud from '../components/game/GameBottomHud';
 import GameOverlays from './components/game/GameOverlays';
 
 import { STATES, AVATARS, COLORS, MISSIONS, shuffle } from './Data';

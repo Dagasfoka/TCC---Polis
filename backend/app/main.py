@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from backend.app.api.routes.routes import router as api_router
@@ -6,7 +7,15 @@ from backend.app.api.routes.websocket import router as websocket_router
 
 app = FastAPI()
 
-app.mount('/static', StaticFiles(directory='static'), name='static')
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://127.0.0.1:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.mount("/frontend", StaticFiles(directory="frontend"), name="frontend")
 
 app.include_router(api_router)
 app.include_router(websocket_router)
