@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AVATARS } from './Data';
+import { AVATARS } from './polis/Data';
 
 function LobbyScreen({player,onStartGame,onBack,flash}){
   const [code]=useState(()=>Math.random().toString(36).slice(2,5).toUpperCase()+' '+Math.random().toString(36).slice(2,5).toUpperCase());
