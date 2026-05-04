@@ -1,4 +1,4 @@
-class MatchTerritory():
+class MatchTerritory:
     def __init__(self,match_id, territory_id, base_influence, name, region):
         self.match_id=match_id
         self.territory_id=territory_id

@@ -1,7 +1,9 @@
 # Estado/território do mapa.
-from sqlalchemy.orm import Mapped,mapped_column
-from sqlalchemy import String,Integer 
+from sqlalchemy import Integer, String
+from sqlalchemy.orm import Mapped, mapped_column
+
 from backend.app.db.base import Base
+
 
 class Territory(Base):
     __tablename__ = "territories"

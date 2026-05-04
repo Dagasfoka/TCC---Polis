@@ -1,6 +1,8 @@
+
 from backend.app.db.database import SessionLocal
 from backend.app.services.match_service import create_match
-from sqlalchemy import select
+
+
 def test_creat_match() -> None:
     db = SessionLocal()
 

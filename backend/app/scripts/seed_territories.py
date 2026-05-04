@@ -5,7 +5,6 @@ from sqlalchemy import select
 from backend.app.db.database import SessionLocal
 from backend.app.models.territory import Territory
 
-
 TERRITORIES_DATA = [
     # Norte
     {"id": "AC", "name": "Acre", "region": "Norte", "base_influence": 3},
