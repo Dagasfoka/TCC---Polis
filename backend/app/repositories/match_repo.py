@@ -1,6 +1,11 @@
 # Busca/salva estado da partida no Redis.
-from json import dumps,loads
+from json import dumps, loads
+
 from backend.app.db.redis import redis_client
+
+
+def incr_match_round(match_id):
+    return redis_client.incr(f"match:{match_id}:round")
 
 def generate_match_id() -> int:
     return redis_client.incr("match:counter")
@@ -18,5 +23,3 @@ def get_match_state(match_id):
         return loads(match_state)
     return None
 
-def update_match_state() :
-    pass

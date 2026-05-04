@@ -1,6 +1,9 @@
+from sqlalchemy import select
+
 from backend.app.db.database import SessionLocal
 from backend.app.models.territory import Territory
-from sqlalchemy import select
+
+
 def show_territories() -> None:
     db = SessionLocal()
 

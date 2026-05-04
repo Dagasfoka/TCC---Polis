@@ -1,8 +1,6 @@
 from backend.app.db.base import Base
 from backend.app.db.database import engine
 
-from backend.app.models import Territory
-
 
 def create_database() -> None:
     Base.metadata.create_all(bind=engine)
