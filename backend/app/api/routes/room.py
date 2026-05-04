@@ -28,5 +28,5 @@ async def start_room_route(
     data:StartRoomRequest,
     db: Session = Depends(get_db)
 ):
-    return start_room(db, room_id, data["player_id"])
+    return start_room(db, room_id, data.player_id)
 

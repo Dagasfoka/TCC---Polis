@@ -4,7 +4,7 @@ from backend.app.repositories.match_repo import generate_match_id
 from backend.app.repositories.territory_repo import get_all_territories
 
 
-def build_initial_match_state(db,room) -> Match:
+def build_initial_match_state(db,room_dict) -> Match:
 
     territories= get_all_territories(db)
     match_territories=[]
@@ -23,8 +23,8 @@ def build_initial_match_state(db,room) -> Match:
     match_state=Match(
         match_id,
         match_territories,
-        room.code,
-        room.players,
+        room_dict["room_code"],
+        room_dict["players"],
         round
     )
     return match_state
