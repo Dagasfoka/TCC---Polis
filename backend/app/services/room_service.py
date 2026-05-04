@@ -35,7 +35,7 @@ def join_room(player_id, room_code):
 def get_room(room_code):
     return get_room_repo(room_code)
 
-def start_room(db,room_code, player_id):
+def start_game(db,room_code, player_id):
     room_dict = get_room(room_code)
 
     if player_id != room_dict["host_player_id"]:

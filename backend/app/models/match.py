@@ -25,10 +25,7 @@ class Match:
             "match_id": self.match_id,
             'territories':[t.to_dict() for t in self.territories],
             'room_code':self.room_code,
-            'players':[
-    p.to_dict() if hasattr(p, "to_dict") else p
-    for p in self.players
-                        ],
+            'players':[p for p in self.players],
             'status':self.status,
             'current_turn_player_id': self.current_turn_player_id,
             'round':self.round
