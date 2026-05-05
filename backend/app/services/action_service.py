@@ -8,6 +8,10 @@ from backend.app.repositories.match_repo import (
     get_match_state,
     save_match_state,
 )
+from backend.app.services.match_mission_service import (
+    final_round_verify,
+    start_round_verify,
+)
 
 
 def get_attack_options():
@@ -69,26 +73,76 @@ def resolve_attack_option(
         else:
             target["current_influence"] = current_influence - influence_generated
 
+    action_result = {
+        "success": success,
+        "roll": roll,
+        "option": option,
+        "option_id": option["option_id"],
+        "title": option["title"],
+        "description": option["description"],
+        "risk_level": option["risk_level"],
+        "cost_money": option["cost_money"],
+        "success_chance": option["success_chance"],
+        "target_territory_id": target_territory_id,
+        "territory_id": target_territory_id,
+        "territory_name": target["name"],
+        "old_owner_id": old_owner_id,
+        "new_owner_id": target["owner_id"],
+        "previous_owner_id": old_owner_id,
+        "old_current_influence": old_current_influence,
+        "new_current_influence": target["current_influence"],
+        "previous_influence": old_current_influence,
+        "new_influence": target["current_influence"],
+        "influence_generated": influence_generated,
+        "conquered": conquered,
+        "leftover": leftover,
+    }
+
+    match["last_action_result"] = action_result
+
+    save_match_state(match)
+
+    won = final_round_verify(match_id, player_id)
+
+    if won:
+        match = get_match_state(match_id)
+        match["status"] = "finished"
+        match["winner_id"] = player_id
+        match["last_action_result"] = action_result
+        save_match_state(match)
+
+        return {
+            "match": match,
+            "result": {
+                **action_result,
+                "next_turn_player_id": match["current_turn_player_id"],
+                "round": match["round"],
+                "winner_id": player_id,
+                "status": "finished",
+            },
+        }
+
+    match = get_match_state(match_id)
+
     advance_turn(match)
+
+    save_match_state(match)
+
+    start_round_verify(match_id, match["current_turn_player_id"])
+
+    match = get_match_state(match_id)
+    match["last_action_result"] = action_result
 
     save_match_state(match)
 
     return {
         "match": match,
         "result": {
-            "success": success,
-            "roll": roll,
-            "option": option,
-            "target_territory_id": target_territory_id,
-            "old_owner_id": old_owner_id,
-            "new_owner_id": target["owner_id"],
-            "old_current_influence": old_current_influence,
-            "new_current_influence": target["current_influence"],
-            "influence_generated": influence_generated,
-            "conquered": conquered,
-            "leftover": leftover,
+            **action_result,
             "next_turn_player_id": match["current_turn_player_id"],
             "round": match["round"],
+            "winner_id": match.get("winner_id"),
+            "status": match["status"],
         },
     }
 

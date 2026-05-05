@@ -2,6 +2,7 @@ import '../../style.css'
 
 function GameSidebar({
   gs,
+  playerId, // 👈 novo
   COLORS,
   isMyTurn,
   stateCount,
@@ -24,7 +25,7 @@ function GameSidebar({
             <span className="lbl lbl-light" style={{marginBottom:8}}>Jogadores</span>
             {gs.players.map((p,i)=>(
               <div key={i} className="p-mini">
-                <div className={`p-mini-av${i===0?' me':''}`} style={{borderColor:COLORS[i]}}>{p.av}</div>
+                <div className={`p-mini-av${i === playerId?' me':''}`} style={{borderColor:COLORS[i]}}>{p.av}</div>
                 <div style={{flex:1}}>
                   <div className="p-mini-name">{p.name.slice(0,9)}{i===0?' ★':''}</div>
                   <div className="p-mini-count">{stateCount(i)} estados</div>

@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Teste WebSocket Polis</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #111827;
+      color: #f9fafb;
+    }
+
+    input, button {
+      padding: 8px;
+      margin: 4px;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .box {
+      border: 1px solid #374151;
+      padding: 12px;
+      margin-top: 12px;
+      border-radius: 8px;
+      background: #1f2937;
+    }
+
+    pre {
+      background: #030712;
+      padding: 12px;
+      border-radius: 8px;
+      overflow-x: auto;
+      max-height: 500px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Teste WebSocket Polis</h1>
+
+  <div class="box">
+    <h2>Conexão</h2>
+
+    <label>Match ID:</label>
+    <input id="matchId" value="" placeholder="ex: 36" />
+
+    <label>Player ID:</label>
+    <input id="playerId" value="p1" />
+
+    <button onclick="connect()">Conectar</button>
+    <button onclick="disconnect()">Desconectar</button>
+  </div>
+
+  <div class="box">
+    <h2>Ação teste</h2>
+
+    <p>
+      Essa ação provisória conquista um território diretamente para o jogador da vez.
+    </p>
+
+    <label>Territory ID:</label>
+    <input id="territoryId" value="SP" />
+
+    <button onclick="claimTerritory()">Claim Territory</button>
+  </div>
+
+  <div class="box">
+    <h2>Estado resumido</h2>
+    <div id="summary"></div>
+  </div>
+
+  <div class="box">
+    <h2>Log</h2>
+    <pre id="log"></pre>
+  </div>
+
+  <script>
+    let ws = null;
+    let lastState = null;
+
+    function log(message) {
+      const logEl = document.getElementById("log");
+      logEl.textContent += message + "\n\n";
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function renderSummary(data) {
+      if (!data || data.type !== "match_state") {
+        return;
+      }
+
+      const payload = data.payload;
+      lastState = payload;
+
+      const currentPlayer = payload.players.find(
+        player => player.player_id === payload.current_turn_player_id
+      );
+
+      const me = payload.players.find(
+        player => player.player_id === payload.your_player_id
+      );
+
+      const summaryEl = document.getElementById("summary");
+
+      summaryEl.innerHTML = `
+        <p><strong>Status:</strong> ${payload.status}</p>
+        <p><strong>Rodada:</strong> ${payload.round}</p>
+        <p><strong>Você:</strong> ${payload.your_player_id} - ${me?.username ?? "?"}</p>
+        <p><strong>Jogador da vez:</strong> ${payload.current_turn_player_id} - ${currentPlayer?.username ?? "?"}</p>
+        <p><strong>Vencedor:</strong> ${payload.winner_id ?? "nenhum"}</p>
+        <p><strong>Sua missão:</strong></p>
+        <pre>${JSON.stringify(payload.your_mission, null, 2)}</pre>
+      `;
+    }
+
+    function connect() {
+      const matchId = document.getElementById("matchId").value;
+      const playerId = document.getElementById("playerId").value;
+
+      if (!matchId || !playerId) {
+        alert("Preencha match_id e player_id.");
+        return;
+      }
+
+      ws = new WebSocket(`ws://localhost:8000/ws/match/${matchId}/${playerId}`);
+
+      ws.onopen = () => {
+        log(`Conectado como ${playerId} na partida ${matchId}`);
+      };
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+
+        log("Recebido:");
+        log(JSON.stringify(data, null, 2));
+
+        renderSummary(data);
+      };
+
+      ws.onerror = () => {
+        log("Erro no WebSocket");
+      };
+
+      ws.onclose = () => {
+        log("Conexão fechada");
+      };
+    }
+
+    function disconnect() {
+      if (ws) {
+        ws.close();
+        ws = null;
+      }
+    }
+
+    function claimTerritory() {
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        alert("WebSocket não está conectado.");
+        return;
+      }
+
+      const territoryId = document.getElementById("territoryId").value;
+
+      ws.send(JSON.stringify({
+        type: "claim_territory",
+        payload: {
+          territory_id: territoryId
+        }
+      }));
+
+      log(`Enviado claim_territory para ${territoryId}`);
+    }
+  </script>
+</body>
+</html>

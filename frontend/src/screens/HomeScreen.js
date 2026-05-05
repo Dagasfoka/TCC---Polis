@@ -8,14 +8,66 @@ function HomeScreen({onEnterLobby,onCreateLobby,flash}){
   const [codeInput,setCodeInput]=useState('');
   const [authMode,setAuthMode]=useState(null); // 'login'|'cadastro'|null
 
-  const go=(create)=>{
-    if(!username.trim()){flash('Digite seu nome antes de continuar!');return;}
-    if(create) onCreateLobby({username,avatar:selAv});
-    else{
-      if(codeInput.trim().length<3){flash('Digite um código de sala válido.');return;}
-      onEnterLobby({username,avatar:selAv,code:codeInput.trim().toUpperCase()});
+  const go = async (create) => {
+  if (!username.trim()) {
+    flash('Digite seu nome antes de continuar!');
+    return;
+  }
+
+  try {
+   
+    const playerRes = await fetch('http://localhost:8000/players', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username })
+    });
+
+    const playerData = await playerRes.json();
+
+    const playerObj = {
+      id: playerData.id,
+      username,
+      avatar: selAv
+    };
+
+    
+    if (create) {
+      const roomRes = await fetch('http://localhost:8000/rooms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ host_id: playerData.id })
+      });
+
+      const roomData = await roomRes.json();
+
+      onCreateLobby({
+        ...playerObj,
+        room_code: roomData.code
+      });
+
+    } else {
+     
+      if (codeInput.trim().length < 3) {
+        flash('Digite um código de sala válido.');
+        return;
+      }
+
+      await fetch(`http://localhost:8000/rooms/${codeInput}/join`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ player_id: playerData.id })
+      });
+
+      onEnterLobby({
+        ...playerObj,
+        code: codeInput.trim().toUpperCase()
+      });
     }
-  };
+
+  } catch (err) {
+    flash('Erro ao conectar com servidor');
+  }
+};
 
   return(
     <div className="htbg" style={{height:'100%',display:'flex',flexDirection:'column'}}>

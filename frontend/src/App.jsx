@@ -1,5 +1,5 @@
-import MatchMapTest from "./MatchMapTest.jsx";
+import DemoGameScreen from "./screens/DemoGameScreen.jsx";
 
 export default function App() {
-  return <MatchMapTest />;
+  return <DemoGameScreen />;
 }

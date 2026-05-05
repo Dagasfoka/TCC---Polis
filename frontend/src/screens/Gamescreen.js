@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 
 import GameTopHud from '../components/game/GameHudTop';
 import GameMap from '../components/game/GameMap';
@@ -6,56 +6,43 @@ import GameSidebar from '../components/game/GameSidebar';
 import GameBottomHud from '../components/game/GameBottomHud';
 import GameOverlays from './components/game/GameOverlays';
 
-import { STATES, AVATARS, COLORS, MISSIONS, shuffle } from './Data';
-export default function GameScreen({ player, onMenu, flash }) {
+import { COLORS } from './Data';
 
-  const initState = () => {
-    const ids = STATES.map(s => s.id);
-    const sh = shuffle(ids);
+export default function GameScreen({ player, match_id, onMenu, flash }) {
 
-    const t = {};
-    ids.forEach(id => t[id] = null);
+  const [gs, setGs] = useState(null);
 
-    for (let i = 0; i < 5; i++) t[sh[i]] = 0;
-    for (let i = 5; i < 10; i++) t[sh[i]] = 1;
-    for (let i = 10; i < 15; i++) t[sh[i]] = 2;
-    for (let i = 15; i < 20; i++) t[sh[i]] = 3;
-
-    const players = [
-      { name: player.username, av: AVATARS[player.avatar], color: COLORS[0] },
-      { name: 'Marina_K', av: AVATARS[1], color: COLORS[1] },
-      { name: 'Rodolfo99', av: AVATARS[2], color: COLORS[2] },
-      { name: 'Guilherme_L', av: AVATARS[3], color: COLORS[3] },
-    ];
-
-    return {
-      t,
-      players,
-      res: {
-        dinheiro: 500,
-        influencia: 30,
-        corrupcao: 0
-      },
-      round: 1,
-      turn: 0,
-      sel: null,
-      missions: MISSIONS.slice(0, 4),
-      won: false
-    };
-  };
-
-  const [gs, setGs] = useState(initState);
-
-  const [overlay, setOverlay] = useState('dist');
+  const [overlay, setOverlay] = useState(null);
   const [qCtx, setQCtx] = useState(null);
   const [diceCtx, setDiceCtx] = useState(null);
   const [resCtx, setResCtx] = useState(null);
 
+  
+  useEffect(() => {
+    fetch(`http://localhost:8000/matches/${match_id}`)
+      .then(res => res.json())
+      .then(data => setGs(data));
+  }, [match_id]);
+
+  
+  useEffect(() => {
+    const socket = new WebSocket(`ws://localhost:8000/ws/${match_id}`);
+
+    socket.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      setGs(data);
+    };
+
+    return () => socket.close();
+  }, [match_id]);
+
+  if (!gs) return <div>Carregando jogo...</div>;
+
   const myStates = Object.entries(gs.t)
-    .filter(([, v]) => v === 0)
+    .filter(([, v]) => v === player.id)
     .map(([k]) => k);
 
-  const isMyTurn = gs.turn === 0;
+  const isMyTurn = gs.turn === player.id;
 
   const ownerColor = pid => COLORS[pid] || '#2a2624';
 
@@ -65,20 +52,17 @@ export default function GameScreen({ player, onMenu, flash }) {
   const winner = useMemo(() => {
     if (!gs.won) return null;
 
-    return gs.missions[0].check(gs.t, 0)
-      ? 0
-      : [1, 2, 3].reduce((b, i) =>
-          stateCount(i) > stateCount(b) ? i : b
-        , 0);
+    return gs.winner;
   }, [gs.won]);
 
+  
   const selectState = sid => {
     if (!isMyTurn) {
       flash('Aguarde seu turno.');
       return;
     }
 
-    if (gs.t[sid] !== 0) {
+    if (gs.t[sid] !== player.id) {
       flash('Selecione um de seus territórios.');
       return;
     }
@@ -114,83 +98,41 @@ export default function GameScreen({ player, onMenu, flash }) {
     setOverlay('dice');
   };
 
-  const handleDiceRoll = roll => {
-    const { correct, action, stateId, bonus } = diceCtx;
-
-    const base = 50;
-    const final = Math.max(5, Math.min(95, base + bonus));
-    const success = roll <= final;
-
-    setResCtx({
-      correct,
-      action,
-      stateId,
-      success,
-      base,
-      bonus,
-      final,
-      roll
+  
+  const handleDiceRoll = async (roll) => {
+    const res = await fetch('http://localhost:8000/action', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        player_id: player.id,
+        match_id,
+        action: diceCtx.action,
+        state_id: diceCtx.stateId,
+        roll,
+        bonus: diceCtx.bonus
+      })
     });
 
+    const data = await res.json();
+
+    setResCtx(data);
     setOverlay('result');
   };
 
+
   const applyResult = () => {
-    const { action, success } = resCtx;
-
-    setGs(g => {
-      const t = { ...g.t };
-      const r = { ...g.res };
-
-      if (action === 'attack' && success) {
-        const enemies = Object.entries(t)
-          .filter(([, v]) => v !== 0 && v !== null);
-
-        if (enemies.length > 0) {
-          const [eid] = enemies[Math.floor(Math.random() * enemies.length)];
-          t[eid] = 0;
-        }
-      }
-
-      r.dinheiro = Math.max(0, r.dinheiro - 80);
-      r.corrupcao = Math.min(
-        100,
-        r.corrupcao + (action === 'political' ? 5 : 2)
-      );
-
-      if (action === 'collect')
-        r.dinheiro += success ? 150 : 60;
-
-      if (action === 'reinforce' || action === 'political')
-        r.influencia += success ? 12 : 4;
-
-      const won = g.missions[0].check(t, 0);
-
-      return {
-        ...g,
-        t,
-        res: r,
-        sel: null,
-        won
-      };
-    });
-
     setOverlay(null);
   };
 
-  const endTurn = () => {
-    setGs(g => {
-      const next = (g.turn + 1) % 4;
-      const nextRound = next === 0 ? g.round + 1 : g.round;
-      const won = g.missions[0].check(g.t, 0) || nextRound > 5;
-
-      return {
-        ...g,
-        turn: next,
-        round: nextRound,
-        sel: null,
-        won
-      };
+  
+  const endTurn = async () => {
+    await fetch('http://localhost:8000/end-turn', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        player_id: player.id,
+        match_id
+      })
     });
   };
 
@@ -215,20 +157,19 @@ export default function GameScreen({ player, onMenu, flash }) {
 
         <GameMap
           gs={gs}
-          setGs={setGs}
           selectState={selectState}
           isMyTurn={isMyTurn}
           ownerColor={ownerColor}
         />
 
-       <GameSidebar
-         gs={gs}
-         COLORS={COLORS}  
-         isMyTurn={isMyTurn}
-         ACTIONS={ACTIONS}
-         doAction={doAction}
-         stateCount={stateCount}
-/>
+        <GameSidebar
+          gs={gs}
+          COLORS={COLORS}
+          isMyTurn={isMyTurn}
+          ACTIONS={ACTIONS}
+          doAction={doAction}
+          stateCount={stateCount}
+        />
 
       </div>
 
@@ -252,8 +193,6 @@ export default function GameScreen({ player, onMenu, flash }) {
         handleAnswer={handleAnswer}
         handleDiceRoll={handleDiceRoll}
         applyResult={applyResult}
-        setGs={setGs}
-        initState={initState}
         onMenu={onMenu}
         flash={flash}
       />

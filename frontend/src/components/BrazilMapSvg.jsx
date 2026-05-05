@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 
-
 const REGION_COLORS = {
   Norte: "#6dba8a",
   Nordeste: "#f0a090",
@@ -9,21 +8,17 @@ const REGION_COLORS = {
   Sul: "#a0b0e0",
 };
 
-
-const PLAYER_COLORS = ["#c9963a", "#d07060", "#6dba8a", "#9fcfdb"];
-
-function normalizeOwnerId(ownerId) {
-  if (ownerId === null || ownerId === undefined) return null;
-
-  const numericOwnerId = Number(ownerId);
-
-  if (Number.isNaN(numericOwnerId)) return null;
-
-  return numericOwnerId;
-}
+const DEFAULT_PARTY_COLORS = {
+  PR: "#E74C3C",
+  PA: "#3498DB",
+  PV: "#2ECC71",
+  PD: "#F1C40F",
+};
 
 export default function BrazilMapSvg({
   territories = [],
+  players = [],
+  partyColors = DEFAULT_PARTY_COLORS,
   selectedTerritoryId = null,
   onSelectTerritory = () => {},
   className = "",
@@ -40,10 +35,12 @@ export default function BrazilMapSvg({
     if (!territory) return "#2a2624";
     if (selectedTerritoryId === territoryId) return "#e8c070";
 
-    const ownerId = normalizeOwnerId(territory.owner_id);
+    const owner = players.find(
+      (player) => player.player_id === territory.owner_id
+    );
 
-    if (ownerId !== null) {
-      return PLAYER_COLORS[ownerId % PLAYER_COLORS.length];
+    if (owner?.party_id) {
+      return partyColors[owner.party_id] ?? "#c9963a";
     }
 
     return REGION_COLORS[territory.region] ?? "#c9963a";

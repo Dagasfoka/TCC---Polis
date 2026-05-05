@@ -1,5 +1,5 @@
-import STATES from 'Data.js'
-import 'style.css'
+import STATES from '../../data/Data.js'
+import '../../styles/style.css'
 
 export default function GameBottomHud({
   gs,
