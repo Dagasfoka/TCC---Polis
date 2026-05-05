@@ -3,7 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from backend.app.api.routes.routes import router as api_router
-from backend.app.api.routes.websocket import router as websocket_router
 
 app = FastAPI()
 
@@ -18,4 +17,3 @@ app.add_middleware(
 app.mount("/frontend", StaticFiles(directory="frontend"), name="frontend")
 
 app.include_router(api_router)
-app.include_router(websocket_router)

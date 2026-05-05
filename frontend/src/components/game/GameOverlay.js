@@ -4,24 +4,22 @@ import COLORS from '../../Data.js';
 import '../../style.css';
 
 function GameOverlays({
-  overlay,
   gs,
-  myStates,
-  qCtx,
-  diceCtx,
-  resCtx,
-  winner,
-  STATES,
-  QS,
-  setOverlay,
-  handleAnswer,
-  handleDiceRoll,
-  applyResult,
-  initState,
-  setGs,
-  onMenu,
-  flash
+  players = [],
+  onAnswer,
+  onClose,
+  onRollDice,
+  question,        // 👈 vem do backend
+  diceResult,      // 👈 vem do backend
+  attackResult     // 👈 vem do backend
 }) {
+
+  // fallback (caso ainda esteja rodando local)
+  const q = useMemo(() => {
+    if (question) return question;
+    return null;
+  }, [question]);
+
   return (
     <div>
       {overlay==='dist'&&(
@@ -54,31 +52,39 @@ function GameOverlays({
         </Overlay>
       )}
 
-      {/* ══ OVERLAY: PERGUNTA ══ */}
-      {overlay==='question'&&qCtx&&(()=>{
-        const q=QS[Math.floor(Math.random()*QS.length)];
-        return <QuestionOverlay q={q} action={qCtx.action} onAnswer={handleAnswer} onClose={()=>setOverlay(null)} flash={flash}/>;
-      })()}
-
-      {/* ══ OVERLAY: DADO ══ */}
-      {overlay==='dice'&&diceCtx&&(
-        <DiceOverlay ctx={diceCtx} onRoll={handleDiceRoll}/>
+     {gs === 'question' && q && (
+        <QuestionOverlay
+          question={q}
+          onAnswer={onAnswer}
+          onClose={onClose}
+        />
       )}
 
-      {/* ══ OVERLAY: RESULTADO ══ */}
-      {overlay==='result'&&resCtx&&(
-        <ResultOverlay ctx={resCtx} players={gs.players} onContinue={applyResult}/>
+       {gs === 'dice' && (
+       <DiceOverlay
+          ctx={attackResult} // ou o estado correto
+          onRoll={onRollDice}
+          diceResult={diceResult}
+        />
       )}
 
-      {/* ══ OVERLAY: DESCONEXÃO ══ */}
-      {overlay==='disconnect'&&(
-        <DisconnectOverlay players={gs.players} onVote={enc=>{if(enc)setOverlay('end');else setOverlay(null);}}/>
+        {gs === 'result' && (
+       <ResultOverlay
+          ctx={attackResult}
+          players={players}
+          onContinue={onClose}
+       />
       )}
 
-      {/* ══ OVERLAY: FIM DE PARTIDA ══ */}
-      {overlay==='end'&&(
-        <EndOverlay gs={gs} winner={winner??0} onReplay={()=>{setGs(initState());setOverlay('dist');}} onMenu={onMenu}/>
+       {gs === 'end' && (
+       <EndOverlay
+        gs={gameState}
+        winner={gameState.winner}
+        onReplay={() => {}}
+        onMenu={() => {}}
+      />
       )}
+   
     </div>
   
     
@@ -88,215 +94,313 @@ function GameOverlays({
 export default GameOverlays;
 
 /* ─── QUESTION OVERLAY — SIM / NÃO ─────────────────── */
-function QuestionOverlay({q,action,onAnswer,onClose,flash}){
-  const [sel,setSel]=useState(null); // true=Sim false=Não null=nada
-  const [answered,setAnswered]=useState(false);
-  const ACTIONS={attack:'Atacar território vizinho',reinforce:'Reforçar influência',collect:'Coletar recursos',political:'Ação política'};
+function QuestionOverlay({ question, action, onAnswer, onClose, flash }) {
+  const [sel, setSel] = useState(null);
+  const [answered, setAnswered] = useState(false);
 
-  const confirm=()=>{
-    if(sel===null){flash('Escolha Sim ou Não antes de confirmar.');return;}
-    setAnswered(true);
-    setTimeout(()=>onAnswer(sel===q.c, q.exp),900);
+  const ACTIONS = {
+    attack: 'Atacar território vizinho',
+    reinforce: 'Reforçar influência',
+    collect: 'Coletar recursos',
+    political: 'Ação política'
   };
 
-  const correct=answered&&sel===q.c;
-  const wrong=answered&&sel!==q.c;
+  const confirm = () => {
+    if (sel === null) {
+      flash('Escolha Sim ou Não antes de confirmar.');
+      return;
+    }
 
-  return(
-    <Overlay onClose={!answered?onClose:null}>
-      <div className="q-ctx-bar">Ação: <strong>{ACTIONS[action]}</strong> — Responda para alterar a chance de sucesso</div>
+    setAnswered(true);
+
+    // backend vai decidir se está certo ou errado futuramente
+    setTimeout(() => {
+      onAnswer(sel); // 👈 agora só manda a resposta
+    }, 900);
+  };
+
+  const correct = answered && sel === question?.c;
+  const wrong = answered && sel !== question?.c;
+
+  return (
+    <Overlay onClose={!answered ? onClose : null}>
+      <div className="q-ctx-bar">
+        Ação: <strong>{ACTIONS[action]}</strong> — Responda para alterar a chance de sucesso
+      </div>
+
       <div className="q-hdr">
         <span className="q-tag">Pergunta política</span>
         <span className="q-timer-b">0:30</span>
       </div>
-      <div className="q-text">{q.q}</div>
 
-      {/* Sim/Não buttons */}
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14}}>
-        {[{label:'✓  Sim',val:true,baseColor:'#1e3a28',border:'#2d6040',activeColor:'#152e1e',activeBorder:'var(--green)',textColor:'var(--green)'},
-          {label:'✕  Não',val:false,baseColor:'#3a1e1e',border:'#6a3030',activeColor:'#2a1010',activeBorder:'var(--red)',textColor:'var(--red)'}
-        ].map(({label,val,baseColor,border,activeColor,activeBorder,textColor})=>{
-          const isSelected=sel===val;
-          const isCorrectAnswer=answered&&q.c===val;
-          const isWrongAnswer=answered&&sel===val&&val!==q.c;
-          return(
-            <button key={String(val)} onClick={()=>!answered&&setSel(val)} style={{
-              fontFamily:'Nunito,sans-serif',fontSize:'1.05rem',fontWeight:900,padding:'18px 12px',
-              borderRadius:14,border:`2px solid ${isCorrectAnswer?'var(--green)':isWrongAnswer?'var(--red)':isSelected?activeBorder:border}`,
-              background:isCorrectAnswer?'#152e1e':isWrongAnswer?'#2a1010':isSelected?activeColor:baseColor,
-              color:isCorrectAnswer?'var(--green)':isWrongAnswer?'var(--red)':isSelected?textColor:textColor,
-              cursor:answered?'default':'pointer',
-              transition:'all .18s',
-              transform:isSelected&&!answered?'scale(1.03)':'scale(1)',
-              opacity:answered&&!isCorrectAnswer&&!isWrongAnswer?.45:1,
-              letterSpacing:'.02em',
-            }}>
+      <div className="q-text">{question?.q}</div>
+
+      {/* Botões */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
+        {[
+          {
+            label: '✓  Sim',
+            val: true,
+            baseColor: '#1e3a28',
+            border: '#2d6040',
+            activeColor: '#152e1e',
+            activeBorder: 'var(--green)',
+            textColor: 'var(--green)'
+          },
+          {
+            label: '✕  Não',
+            val: false,
+            baseColor: '#3a1e1e',
+            border: '#6a3030',
+            activeColor: '#2a1010',
+            activeBorder: 'var(--red)',
+            textColor: 'var(--red)'
+          }
+        ].map(({ label, val, baseColor, border, activeColor, activeBorder, textColor }) => {
+          const isSelected = sel === val;
+          const isCorrectAnswer = answered && question?.c === val;
+          const isWrongAnswer = answered && sel === val && val !== question?.c;
+
+          return (
+            <button
+              key={String(val)}
+              onClick={() => !answered && setSel(val)}
+              style={{
+                fontFamily: 'Nunito,sans-serif',
+                fontSize: '1.05rem',
+                fontWeight: 900,
+                padding: '18px 12px',
+                borderRadius: 14,
+                border: `2px solid ${
+                  isCorrectAnswer
+                    ? 'var(--green)'
+                    : isWrongAnswer
+                    ? 'var(--red)'
+                    : isSelected
+                    ? activeBorder
+                    : border
+                }`,
+                background: isCorrectAnswer
+                  ? '#152e1e'
+                  : isWrongAnswer
+                  ? '#2a1010'
+                  : isSelected
+                  ? activeColor
+                  : baseColor,
+                color: isCorrectAnswer
+                  ? 'var(--green)'
+                  : isWrongAnswer
+                  ? 'var(--red)'
+                  : textColor,
+                cursor: answered ? 'default' : 'pointer',
+                transition: 'all .18s',
+                transform: isSelected && !answered ? 'scale(1.03)' : 'scale(1)',
+                opacity: answered && !isCorrectAnswer && !isWrongAnswer ? 0.45 : 1,
+                letterSpacing: '.02em'
+              }}
+            >
               {label}
             </button>
           );
         })}
       </div>
 
-      {/* Feedback após responder */}
-      {answered&&(
-        <div style={{
-          background:correct?'rgba(21,45,30,.9)':'rgba(42,16,16,.9)',
-          border:`1.5px solid ${correct?'var(--green)':'var(--red)'}`,
-          borderRadius:12,padding:'12px 14px',marginBottom:14,
-          animation:'slideDown .3s cubic-bezier(.22,.68,0,1.1) both'
-        }}>
-          <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:5}}>
-            <span style={{fontSize:'1rem'}}>{correct?'✓':'✗'}</span>
-            <span style={{fontSize:'.72rem',fontWeight:900,color:correct?'var(--green)':'var(--red)',letterSpacing:'.1em',textTransform:'uppercase',fontFamily:'Space Mono,monospace'}}>
-              {correct?'Resposta correta!':'Resposta incorreta!'}
+      {/* Feedback */}
+      {answered && (
+        <div
+          style={{
+            background: correct ? 'rgba(21,45,30,.9)' : 'rgba(42,16,16,.9)',
+            border: `1.5px solid ${correct ? 'var(--green)' : 'var(--red)'}`,
+            borderRadius: 12,
+            padding: '12px 14px',
+            marginBottom: 14,
+            animation: 'slideDown .3s cubic-bezier(.22,.68,0,1.1) both'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 5 }}>
+            <span style={{ fontSize: '1rem' }}>{correct ? '✓' : '✗'}</span>
+            <span
+              style={{
+                fontSize: '.72rem',
+                fontWeight: 900,
+                color: correct ? 'var(--green)' : 'var(--red)',
+                letterSpacing: '.1em',
+                textTransform: 'uppercase',
+                fontFamily: 'Space Mono,monospace'
+              }}
+            >
+              {correct ? 'Resposta correta!' : 'Resposta incorreta!'}
             </span>
           </div>
-          <div style={{fontSize:'.78rem',color:'var(--tx-d)',lineHeight:1.65}}>{q.exp}</div>
+
+          <div style={{ fontSize: '.78rem', color: 'var(--tx-d)', lineHeight: 1.65 }}>
+            {question?.exp}
+          </div>
         </div>
       )}
 
       <div className="impact-row">
         <span className="impact-lbl">Impacto no dado:</span>
         <div className="impact-vals">
-          <div className="iv"><span className="iv-val" style={{color:'var(--green)'}}>+25%</span><div className="iv-sub">se acertar</div></div>
-          <div className="iv"><span className="iv-val" style={{color:'var(--red)'}}>−15%</span><div className="iv-sub">se errar</div></div>
+          <div className="iv">
+            <span className="iv-val" style={{ color: 'var(--green)' }}>+25%</span>
+            <div className="iv-sub">se acertar</div>
+          </div>
+          <div className="iv">
+            <span className="iv-val" style={{ color: 'var(--red)' }}>−15%</span>
+            <div className="iv-sub">se errar</div>
+          </div>
         </div>
       </div>
+
       <button className="btn btn-gold btn-full" onClick={confirm} disabled={answered}>
-        {answered?'Indo para o dado...' : sel===null?'Escolha Sim ou Não':'Confirmar resposta →'}
+        {answered
+          ? 'Indo para o dado...'
+          : sel === null
+          ? 'Escolha Sim ou Não'
+          : 'Confirmar resposta →'}
       </button>
     </Overlay>
   );
 }
 
 /* ─── DICE OVERLAY ──────────────────────────────────── */
-function DiceOverlay({ctx,onRoll}){
-  const {correct,action,bonus,exp}=ctx;
-  const [rolling,setRolling]=useState(false);
-  const [result,setResult]=useState(null);
-  const [displayNum,setDisplayNum]=useState(null);
-  const rollRef=useRef();
-  const ACTIONS={attack:'Atacar território vizinho',reinforce:'Reforçar influência',collect:'Coletar recursos',political:'Ação política'};
-  const threshold=Math.max(1,Math.min(10,Math.round((50+(bonus))/10)));
+function DiceOverlay({ ctx, onRoll, diceResult }) {
+  const { correct, action, bonus } = ctx;
 
-  const doRoll=()=>{
-    if(rolling||result!==null)return;
-    setRolling(true);
-    let count=0;
-    const interval=setInterval(()=>{
-      setDisplayNum(Math.floor(Math.random()*10)+1);
-      count++;
-      if(count>18){
-        clearInterval(interval);
-        const final=Math.floor(Math.random()*10)+1;
-        setDisplayNum(final);
-        setResult(final);
-        setRolling(false);
-      }
-    },60);
-    rollRef.current=interval;
+  const [rolling, setRolling] = useState(false);
+  const [displayNum, setDisplayNum] = useState(null);
+
+  const rollRef = useRef();
+
+  const ACTIONS = {
+    attack: 'Atacar território vizinho',
+    reinforce: 'Reforçar influência',
+    collect: 'Coletar recursos',
+    political: 'Ação política'
   };
 
-  const DICE_FACES=['⚀','⚁','⚂','⚃','⚄','⚅'];
-  const diceFace=displayNum?DICE_FACES[Math.min(displayNum-1,5)]:'🎲';
-  const success=result!==null&&result<=threshold;
+  // ainda pode mostrar visualmente (UI)
+  const threshold = Math.max(1, Math.min(10, Math.round((50 + bonus) / 10)));
 
-  return(
+  const doRoll = () => {
+    if (rolling || diceResult !== null) return;
+
+    setRolling(true);
+
+    let count = 0;
+
+    const interval = setInterval(() => {
+      setDisplayNum(Math.floor(Math.random() * 10) + 1);
+      count++;
+
+      if (count > 18) {
+        clearInterval(interval);
+
+        // 👇 aqui NÃO decide mais o resultado
+        setRolling(false);
+
+        onRoll(); // 👈 chama backend
+      }
+    }, 60);
+
+    rollRef.current = interval;
+  };
+
+  // 👇 resultado vem do backend
+  const finalResult = diceResult ?? displayNum;
+
+  const DICE_FACES = ['⚀','⚁','⚂','⚃','⚄','⚅'];
+  const diceFace = finalResult
+    ? DICE_FACES[Math.min(finalResult - 1, 5)]
+    : '🎲';
+
+  const success =
+    diceResult !== null
+      ? diceResult <= threshold
+      : null;
+
+  return (
     <Overlay>
       <div className="overlay-title">Jogue o dado!</div>
-      <div className="overlay-sub" style={{marginBottom:14}}>Role para determinar o resultado da ação</div>
+      <div className="overlay-sub" style={{ marginBottom: 14 }}>
+        Role para determinar o resultado da ação
+      </div>
 
-      {/* Contexto da resposta */}
+      {/* contexto */}
       <div style={{
-        background:correct?'rgba(21,45,30,.8)':'rgba(42,16,16,.8)',
-        border:`1.5px solid ${correct?'var(--green)':'var(--red)'}`,
-        borderRadius:11,padding:'9px 13px',marginBottom:14,
-        display:'flex',alignItems:'center',gap:9
+        background: correct ? 'rgba(21,45,30,.8)' : 'rgba(42,16,16,.8)',
+        border: `1.5px solid ${correct ? 'var(--green)' : 'var(--red)'}`,
+        borderRadius: 11,
+        padding: '9px 13px',
+        marginBottom: 14,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 9
       }}>
-        <span style={{fontSize:'1rem'}}>{correct?'✓':'✗'}</span>
+        <span>{correct ? '✓' : '✗'}</span>
         <div>
-          <div style={{fontSize:'.68rem',fontWeight:800,color:correct?'var(--green)':'var(--red)',fontFamily:'Space Mono,monospace',textTransform:'uppercase',letterSpacing:'.08em'}}>
-            {correct?`+25% → Precisa tirar ${threshold} ou menos`:`-15% → Precisa tirar ${threshold} ou menos`}
+          <div style={{
+            fontSize: '.68rem',
+            fontWeight: 800,
+            color: correct ? 'var(--green)' : 'var(--red)',
+          }}>
+            {correct
+              ? `+25% → Precisa tirar ${threshold} ou menos`
+              : `-15% → Precisa tirar ${threshold} ou menos`}
           </div>
-          <div style={{fontSize:'.62rem',color:'var(--tx-m)',marginTop:2}}>Ação: {ACTIONS[action]}</div>
+          <div style={{ fontSize: '.62rem' }}>
+            Ação: {ACTIONS[action]}
+          </div>
         </div>
       </div>
 
-      {/* Dado central */}
+      {/* DADO */}
       <div onClick={doRoll} style={{
-        display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',
-        padding:'28px 0 24px',cursor:rolling||result!==null?'default':'pointer',
-        gap:10
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        padding: '28px 0',
+        cursor: rolling || diceResult !== null ? 'default' : 'pointer'
       }}>
         <div style={{
-          fontSize:'5.5rem',lineHeight:1,
-          filter:rolling?'blur(1px)':'none',
-          transition:'filter .1s',
-          animation:rolling?'shimmer .12s ease-in-out infinite':result!==null?'popIn .3s cubic-bezier(.22,.68,0,1.15) both':'none',
-          textShadow:result!==null?(success?'0 0 30px rgba(109,186,138,.6)':'0 0 30px rgba(208,112,96,.6)'):'none',
-          userSelect:'none',
+          fontSize: '5.5rem',
+          filter: rolling ? 'blur(1px)' : 'none',
+          animation: rolling ? 'shimmer .12s infinite' : 'none'
         }}>
           {diceFace}
         </div>
 
-        {result!==null?(
-          <div style={{textAlign:'center'}}>
+        {diceResult !== null && (
+          <div style={{ textAlign: 'center' }}>
             <div style={{
-              fontSize:'2.2rem',fontWeight:900,fontFamily:'Space Mono,monospace',
-              color:success?'var(--green)':'var(--red)',
-              letterSpacing:'.05em',
-            }}>{result}</div>
-            <div style={{
-              fontSize:'.82rem',fontWeight:800,marginTop:4,
-              color:success?'var(--green)':'var(--red)',
-            }}>{success?'✓ Sucesso!':'✗ Falhou!'}</div>
-            <div style={{fontSize:'.66rem',color:'var(--tx-m)',marginTop:3,fontFamily:'Space Mono,monospace'}}>
-              Precisava de ≤ {threshold} · Tirou {result}
+              fontSize: '2rem',
+              color: success ? 'var(--green)' : 'var(--red)'
+            }}>
+              {diceResult}
             </div>
-          </div>
-        ):(
-          <div style={{fontSize:'.78rem',color:'var(--tx-m)',fontFamily:'Space Mono,monospace',letterSpacing:'.1em'}}>
-            {rolling?'ROLANDO...':'CLIQUE PARA ROLAR'}
+
+            <div>
+              {success ? '✓ Sucesso!' : '✗ Falhou!'}
+            </div>
           </div>
         )}
       </div>
 
-      {/* Régua de chance */}
-      <div style={{background:'#1a2830',border:'1px solid #2d4040',borderRadius:9,padding:'10px 13px',marginBottom:14}}>
-        <div style={{display:'flex',justifyContent:'space-between',marginBottom:6}}>
-          <span style={{fontSize:'.62rem',color:'var(--teal-l)',fontFamily:'Space Mono,monospace'}}>CHANCE DE SUCESSO</span>
-          <span style={{fontSize:'.72rem',fontWeight:800,fontFamily:'Space Mono,monospace',color:'var(--gold)'}}>{threshold*10}%</span>
-        </div>
-        <div style={{display:'flex',gap:4}}>
-          {Array.from({length:10},(_,i)=>{
-            const num=i+1;
-            const isThreshold=num<=threshold;
-            const isRolled=result===num;
-            return(
-              <div key={i} style={{
-                flex:1,height:22,borderRadius:5,
-                background:isRolled?(success?'var(--green)':'var(--red)'):isThreshold?'rgba(201,150,58,.35)':'rgba(30,28,26,.8)',
-                border:`1.5px solid ${isRolled?(success?'var(--green)':'var(--red)'):isThreshold?'rgba(201,150,58,.5)':'#3a3530'}`,
-                display:'flex',alignItems:'center',justifyContent:'center',
-                fontSize:'.58rem',fontFamily:'Space Mono,monospace',
-                color:isRolled?'#fff':isThreshold?'var(--gold)':'#5a5550',
-                fontWeight:isRolled||isThreshold?800:400,
-                transition:'all .2s',
-              }}>{num}</div>
-            );
-          })}
-        </div>
-        <div style={{display:'flex',justifyContent:'space-between',marginTop:5}}>
-          <span style={{fontSize:'.55rem',color:'var(--green)',fontFamily:'Space Mono,monospace'}}>✓ SUCESSO</span>
-          <span style={{fontSize:'.55rem',color:'var(--red)',fontFamily:'Space Mono,monospace'}}>FALHA ✗</span>
-        </div>
-      </div>
-
-      {result!==null?(
-        <button className="btn btn-gold btn-full" onClick={()=>onRoll(result)}>Ver resultado →</button>
-      ):(
-        <button className="btn btn-teal btn-full" onClick={doRoll} disabled={rolling}>
-          {rolling?'Rolando...':'🎲 Rolar o dado'}
+      {diceResult !== null ? (
+        <button
+          className="btn btn-gold btn-full"
+          onClick={() => onRoll(diceResult)}
+        >
+          Ver resultado →
+        </button>
+      ) : (
+        <button
+          className="btn btn-teal btn-full"
+          onClick={doRoll}
+          disabled={rolling}
+        >
+          {rolling ? 'Rolando...' : '🎲 Rolar o dado'}
         </button>
       )}
     </Overlay>
