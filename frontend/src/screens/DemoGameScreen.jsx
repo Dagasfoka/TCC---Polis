@@ -56,6 +56,9 @@ export default function DemoGameScreen() {
   const [selectedTerritory, setSelectedTerritory] = useState(null);
   const [logs, setLogs] = useState([]);
 
+  const [pendingQuestion, setPendingQuestion] = useState(null);
+  const [pendingActionInfo, setPendingActionInfo] = useState(null);
+
   const wsRef = useRef(null);
   const winnerAlertShownRef = useRef(false);
 
@@ -94,6 +97,23 @@ export default function DemoGameScreen() {
     ]);
   }
 
+  function handleWinnerAlert(newMatchState) {
+    if (
+      newMatchState.status === "finished" &&
+      newMatchState.winner_id &&
+      !winnerAlertShownRef.current
+    ) {
+      winnerAlertShownRef.current = true;
+
+      const winnerName = getPlayerNameById(
+        newMatchState.winner_id,
+        newMatchState.players ?? []
+      );
+
+      alert(`Fim de jogo! Vencedor: ${winnerName}`);
+    }
+  }
+
   function connect() {
     if (!matchId.trim() || !playerId.trim()) {
       alert("Preencha match_id e player_id.");
@@ -105,6 +125,8 @@ export default function DemoGameScreen() {
     }
 
     winnerAlertShownRef.current = false;
+    setPendingQuestion(null);
+    setPendingActionInfo(null);
 
     const ws = new WebSocket(
       `ws://localhost:8000/ws/match/${matchId.trim()}/${playerId.trim()}`
@@ -120,31 +142,62 @@ export default function DemoGameScreen() {
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
 
-      addLog(`Recebido evento: ${data.type}`, data);
+      addLog(`Recebido evento: ${data.type ?? data.result?.type ?? "sem_tipo"}`, data);
+
+      if (data.type === "attack_question") {
+        setPendingQuestion(data.question);
+
+        setPendingActionInfo({
+          target_territory_id: data.target_territory_id,
+          territory_id: data.territory_id,
+          territory_name: data.territory_name,
+          option_id: data.option_id,
+          title: data.title,
+          success_chance: data.success_chance,
+        });
+
+        return;
+      }
 
       if (data.type === "match_state") {
         const newMatchState = data.payload;
 
         setMatchState(newMatchState);
 
-        if (
-          newMatchState.status === "finished" &&
-          newMatchState.winner_id &&
-          !winnerAlertShownRef.current
-        ) {
-          winnerAlertShownRef.current = true;
-
-          const winnerName = getPlayerNameById(
-            newMatchState.winner_id,
-            newMatchState.players ?? []
-          );
-
-          alert(`Fim de jogo! Vencedor: ${winnerName}`);
+        if (newMatchState?.last_action_result?.type === "attack_result") {
+          setPendingQuestion(null);
+          setPendingActionInfo(null);
         }
+
+        handleWinnerAlert(newMatchState);
+
+        return;
+      }
+
+      if (data.result?.type === "attack_result") {
+        const newMatchState = data.match;
+
+        setMatchState(newMatchState);
+        setPendingQuestion(null);
+        setPendingActionInfo(null);
+        handleWinnerAlert(newMatchState);
+
+        return;
+      }
+
+      if (data.match && data.result) {
+        const newMatchState = data.match;
+
+        setMatchState(newMatchState);
+        setPendingQuestion(null);
+        setPendingActionInfo(null);
+        handleWinnerAlert(newMatchState);
+
+        return;
       }
 
       if (data.type === "error") {
-        alert(data.payload.message);
+        alert(data.payload?.message ?? data.message ?? "Erro desconhecido.");
       }
     };
 
@@ -165,6 +218,8 @@ export default function DemoGameScreen() {
     }
 
     setConnected(false);
+    setPendingQuestion(null);
+    setPendingActionInfo(null);
   }
 
   function sendAttack(optionId) {
@@ -180,8 +235,14 @@ export default function DemoGameScreen() {
 
     wsRef.current.send(
       JSON.stringify({
-        type: "attack_territory",
+        type: "choose_attack_option",
+
+        target_territory_id: selectedTerritory.territory_id,
+        territory_id: selectedTerritory.territory_id,
+        option_id: optionId,
+
         payload: {
+          target_territory_id: selectedTerritory.territory_id,
           territory_id: selectedTerritory.territory_id,
           option_id: optionId,
         },
@@ -189,11 +250,36 @@ export default function DemoGameScreen() {
     );
 
     addLog(
-      `Enviado attack_territory: ${optionId} em ${selectedTerritory.territory_id}`
+      `Enviado choose_attack_option: ${optionId} em ${selectedTerritory.territory_id}`
     );
 
     setSelectedTerritory(null);
   }
+
+  function answerAttackQuestion(answer) {
+  if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+    alert("WebSocket não está conectado.");
+    return;
+  }
+
+  wsRef.current.send(
+    JSON.stringify({
+      type: "answer_attack_question",
+
+      answer,
+
+      payload: {
+        answer,
+      },
+    })
+  );
+
+  addLog(`Enviado answer_attack_question: ${answer ? "Verdadeiro" : "Falso"}`);
+
+  setPendingQuestion(null);
+  setPendingActionInfo(null);
+}
+
   useEffect(() => {
     return () => {
       if (wsRef.current) {
@@ -357,6 +443,30 @@ export default function DemoGameScreen() {
                   {matchState.last_action_result.territory_name} (
                   {matchState.last_action_result.territory_id})
                 </p>
+
+                {matchState.last_action_result.question_was_correct !== undefined && (
+                  <p>
+                    <strong>Pergunta:</strong>{" "}
+                    {matchState.last_action_result.question_was_correct
+                      ? "Acertou"
+                      : "Errou"}
+                  </p>
+                )}
+
+                {matchState.last_action_result.base_success_chance !== undefined && (
+                  <p>
+                    <strong>Chance base:</strong>{" "}
+                    {matchState.last_action_result.base_success_chance}%
+                  </p>
+                )}
+
+                {matchState.last_action_result.adjusted_success_chance !== undefined && (
+                  <p>
+                    <strong>Chance após pergunta:</strong>{" "}
+                    {matchState.last_action_result.adjusted_success_chance}%
+                  </p>
+                )}
+
                 <p>
                   <strong>Resultado:</strong>{" "}
                   {matchState.last_action_result.success ? "Sucesso" : "Falha"}
@@ -381,7 +491,9 @@ export default function DemoGameScreen() {
                 </p>
                 <p>
                   <strong>Necessário:</strong>{" "}
-                  {100 - matchState.last_action_result.success_chance} ou mais
+                  {matchState.last_action_result.minimum_roll_to_succeed ??
+                    100 - matchState.last_action_result.success_chance}{" "}
+                  ou mais
                 </p>
                 <p>
                   <strong>Chance de sucesso:</strong>{" "}
@@ -437,10 +549,56 @@ export default function DemoGameScreen() {
               {log.data?.payload && (
                 <pre>{JSON.stringify(summarizeEvent(log.data), null, 2)}</pre>
               )}
+
+              {!log.data?.payload && log.data && (
+                <pre>{JSON.stringify(log.data, null, 2)}</pre>
+              )}
             </div>
           ))}
         </aside>
       </section>
+
+      {pendingQuestion && (
+        <div className="question-modal-backdrop">
+          <div className="question-modal">
+            <h2>Pergunta</h2>
+
+            <p className="question-subject">{pendingQuestion.subject}</p>
+
+            <p className="question-description">
+              {pendingQuestion.description}
+            </p>
+
+            {pendingActionInfo && (
+              <div className="question-action-info">
+                <p>
+                  <strong>Ação:</strong> {pendingActionInfo.title}
+                </p>
+
+                <p>
+                  <strong>Território:</strong>{" "}
+                  {pendingActionInfo.territory_name}
+                </p>
+
+                <p>
+                  <strong>Chance base:</strong>{" "}
+                  {pendingActionInfo.success_chance}%
+                </p>
+              </div>
+            )}
+
+            <div className="question-buttons">
+              <button onClick={() => answerAttackQuestion(true)}>
+                Verdadeiro
+              </button>
+
+              <button onClick={() => answerAttackQuestion(false)}>
+                Falso
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

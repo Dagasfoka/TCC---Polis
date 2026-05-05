@@ -3,7 +3,7 @@ from backend.app.repositories.match_repo import get_match_state, save_match_stat
 from backend.app.repositories.room_repo import get_room_repo
 from backend.app.services.factories.match_factory import (
     build_initial_match_state,
-    distribute_initial_territories_missions,
+    distribute_initial_territories_missions_questions,
 )
 
 
@@ -20,7 +20,7 @@ def create_match(db,room_code):
     
     match_state=build_initial_match_state(db,room_dict)
     match_state_dict = match_state.to_dict()
-    match_state_dict=distribute_initial_territories_missions(db, match_state_dict)
+    match_state_dict=distribute_initial_territories_missions_questions(db, match_state_dict)
     save_match_state(match_state_dict)
     return match_state_dict
 

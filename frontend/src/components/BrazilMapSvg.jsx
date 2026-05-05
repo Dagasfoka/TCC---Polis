@@ -111,7 +111,7 @@ export default function BrazilMapSvg({
                         dominantBaseline="middle"
                         className="polis-territory-label"
                         style={{
-                              pointerEvents: "none",
+                              pointerEvents: "none", 
                               userSelect: "none",
                               fontSize: territoryId === "DF" ? "10px" : "16px",
                               fontWeight: 800,
