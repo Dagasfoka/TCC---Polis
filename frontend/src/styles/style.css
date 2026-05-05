@@ -522,3 +522,7 @@ body {
   opacity: 0.75;
   line-height: 1.35;
 }
+.polis-territory:focus,
+.polis-territory:focus-visible {
+  outline: none;
+}

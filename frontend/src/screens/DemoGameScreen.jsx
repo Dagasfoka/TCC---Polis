@@ -42,6 +42,12 @@ function summarizeEvent(data) {
   };
 }
 
+function getPlayerNameById(playerId, players) {
+  const player = players.find((player) => player.player_id === playerId);
+
+  return player ? `${player.username} (${player.player_id})` : playerId;
+}
+
 export default function DemoGameScreen() {
   const [matchId, setMatchId] = useState("");
   const [playerId, setPlayerId] = useState("p1");
@@ -51,6 +57,7 @@ export default function DemoGameScreen() {
   const [logs, setLogs] = useState([]);
 
   const wsRef = useRef(null);
+  const winnerAlertShownRef = useRef(false);
 
   const players = matchState?.players ?? [];
   const territories = matchState?.territories ?? [];
@@ -97,6 +104,8 @@ export default function DemoGameScreen() {
       wsRef.current.close();
     }
 
+    winnerAlertShownRef.current = false;
+
     const ws = new WebSocket(
       `ws://localhost:8000/ws/match/${matchId.trim()}/${playerId.trim()}`
     );
@@ -114,7 +123,24 @@ export default function DemoGameScreen() {
       addLog(`Recebido evento: ${data.type}`, data);
 
       if (data.type === "match_state") {
-        setMatchState(data.payload);
+        const newMatchState = data.payload;
+
+        setMatchState(newMatchState);
+
+        if (
+          newMatchState.status === "finished" &&
+          newMatchState.winner_id &&
+          !winnerAlertShownRef.current
+        ) {
+          winnerAlertShownRef.current = true;
+
+          const winnerName = getPlayerNameById(
+            newMatchState.winner_id,
+            newMatchState.players ?? []
+          );
+
+          alert(`Fim de jogo! Vencedor: ${winnerName}`);
+        }
       }
 
       if (data.type === "error") {
@@ -141,31 +167,33 @@ export default function DemoGameScreen() {
     setConnected(false);
   }
 
-function sendAttack(optionId) {
-  if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-    alert("WebSocket não está conectado.");
-    return;
+  function sendAttack(optionId) {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+      alert("WebSocket não está conectado.");
+      return;
+    }
+
+    if (!selectedTerritory) {
+      alert("Selecione um território no mapa.");
+      return;
+    }
+
+    wsRef.current.send(
+      JSON.stringify({
+        type: "attack_territory",
+        payload: {
+          territory_id: selectedTerritory.territory_id,
+          option_id: optionId,
+        },
+      })
+    );
+
+    addLog(
+      `Enviado attack_territory: ${optionId} em ${selectedTerritory.territory_id}`
+    );
+
+    setSelectedTerritory(null);
   }
-
-  if (!selectedTerritory) {
-    alert("Selecione um território no mapa.");
-    return;
-  }
-
-  wsRef.current.send(
-    JSON.stringify({
-      type: "attack_territory",
-      payload: {
-        territory_id: selectedTerritory.territory_id,
-        option_id: optionId,
-      },
-    })
-  );
-
-  addLog(
-    `Enviado attack_territory: ${optionId} em ${selectedTerritory.territory_id}`
-  );
-}
   useEffect(() => {
     return () => {
       if (wsRef.current) {
@@ -249,7 +277,10 @@ function sendAttack(optionId) {
               <strong>Status da partida:</strong> {matchState?.status ?? "-"}
             </p>
             <p>
-              <strong>Vencedor:</strong> {matchState?.winner_id ?? "Nenhum"}
+              <strong>Vencedor:</strong>{" "}
+              {matchState?.winner_id
+                ? getPlayerNameById(matchState.winner_id, players)
+                : "Nenhum"}
             </p>
           </div>
 
@@ -346,8 +377,15 @@ function sendAttack(optionId) {
                 </p>
                 <p>
                   <strong>Rolagem:</strong>{" "}
-                  {matchState.last_action_result.roll} /{" "}
-                  {100-matchState.last_action_result.success_chance}
+                  {matchState.last_action_result.roll}
+                </p>
+                <p>
+                  <strong>Necessário:</strong>{" "}
+                  {100 - matchState.last_action_result.success_chance} ou mais
+                </p>
+                <p>
+                  <strong>Chance de sucesso:</strong>{" "}
+                  {matchState.last_action_result.success_chance}%
                 </p>
               </>
             ) : (
