@@ -23,3 +23,17 @@ def get_match_state(match_id):
         return loads(match_state)
     return None
 
+def get_territory_by_region(match_dict,region):
+    territories=match_dict['territories']
+    territories_region=[]
+    for t in territories:
+        if t["region"] == region:
+            territories_region.append(t)
+    return territories_region
+            
+
+def get_territory_by_id(match_dict,territory_id):
+    for territory in match_dict['territories']:
+        if territory['territory_id'] == territory_id:
+            return territory
+
