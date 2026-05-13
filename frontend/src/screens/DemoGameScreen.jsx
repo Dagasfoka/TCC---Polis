@@ -257,28 +257,28 @@ export default function DemoGameScreen() {
   }
 
   function answerAttackQuestion(answer) {
-  if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-    alert("WebSocket não está conectado.");
-    return;
-  }
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+      alert("WebSocket não está conectado.");
+      return;
+    }
 
-  wsRef.current.send(
-    JSON.stringify({
-      type: "answer_attack_question",
+    wsRef.current.send(
+      JSON.stringify({
+        type: "answer_attack_question",
 
-      answer,
-
-      payload: {
         answer,
-      },
-    })
-  );
 
-  addLog(`Enviado answer_attack_question: ${answer ? "Verdadeiro" : "Falso"}`);
+        payload: {
+          answer,
+        },
+      })
+    );
 
-  setPendingQuestion(null);
-  setPendingActionInfo(null);
-}
+    addLog(`Enviado answer_attack_question: ${answer ? "Verdadeiro" : "Falso"}`);
+
+    setPendingQuestion(null);
+    setPendingActionInfo(null);
+  }
 
   useEffect(() => {
     return () => {

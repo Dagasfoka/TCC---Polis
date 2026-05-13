@@ -1,23 +1,19 @@
 import random
 
-from backend.app.models.match_mission import MatchMission
-from backend.app.repositories.match_mission_repo import (
+from backend.app.factories.redis.match_verify_factory import (
+    is_alive,
+    verify_region_mission,
+    verify_state_mission,
+)
+from backend.app.models.redis.match_mission_model import MatchMission
+from backend.app.repositories.redis.match_mission_repo import (
     get_match_mission_by_owner_id,
     update_match_mission,
-)
-from backend.app.services.factories.match_verify_factory import (
-    is_alive,
-    verify_region,
-    verify_state,
 )
 
 
 def start_verify_match_mission(match_id, player_id):
     match_mission = get_match_mission_by_owner_id(match_id, player_id)
-
-    if match_mission is None:
-        raise ValueError("Missão do jogador não encontrada.")
-
     if match_mission["type"] == "destruction":
         target_id = match_mission["content"]["destruction"]
 
@@ -38,7 +34,7 @@ def final_verify_match_mission(match_id, player_id):
     match match_mission["type"]:
         case "region":
             for region_content in match_mission["content"]["region"]:
-                if not verify_region(
+                if not verify_region_mission(
                     region_content["region"],
                     region_content["quantity"],
                     match_id,
@@ -49,7 +45,7 @@ def final_verify_match_mission(match_id, player_id):
             return True
 
         case "state":
-            return verify_state(
+            return verify_state_mission(
                 match_mission["content"]["state"],
                 match_mission["owner_id"],
                 match_id,

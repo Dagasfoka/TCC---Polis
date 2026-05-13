@@ -1,6 +1,6 @@
 # Status geral da partida.
-from backend.app.models.match_territory import MatchTerritory
-from backend.app.models.player import Player
+from backend.app.models.redis.match_territory_model import MatchTerritory
+from backend.app.models.redis.player_model import Player
 
 
 class Match:
@@ -14,6 +14,7 @@ class Match:
         current_turn_player_id: str,
         round,
         missions: list[dict] | None = None,
+        pending_action_question: dict | None=None,
     ):
         self.match_id = match_id
         self.territories = territories
@@ -23,6 +24,7 @@ class Match:
         self.current_turn_player_id = current_turn_player_id
         self.round = round
         self.missions = missions or []
+        self.pending_action_question=pending_action_question
 
     def to_dict(self):
         return {
@@ -34,4 +36,5 @@ class Match:
             "current_turn_player_id": self.current_turn_player_id,
             "round": self.round,
             "missions": self.missions,
+            'pending_action_question': self.pending_action_question,
         }

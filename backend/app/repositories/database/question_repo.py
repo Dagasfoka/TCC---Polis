@@ -1,4 +1,7 @@
-from backend.app.models.action_option import ActionOption
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from backend.app.models.database.question_model import Question
 
 QUESTIONS_OPTIONS = [
     {
@@ -64,3 +67,14 @@ def get_question_by_id(question_id: str):
         if question.question_id == question_id:
             return question
     return None
+
+
+def get_all_questions_dict(db: Session) -> list[dict]:
+    return [q.to_dict() for q in db.scalars(select(Question)).all()]
+
+def get_all_questions(db: Session) -> list[Question]:
+    return list (db.scalars(select(Question)).all())
+
+
+def get_question_by_id(db: Session, question_id: int) -> dict | None:
+    return db.get(Question, question_id).to_dict()

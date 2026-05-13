@@ -1,47 +1,107 @@
 import random
 
-from backend.app.repositories.action_option_repo import (
+from backend.app.factories.redis.action_factory import (
+    build_action_response_before_question,
+)
+from backend.app.rules.action_rule import (
+    adjust_success_chance_by_answer,
+)
+from backend.app.services.banco.action_option_service import (
+    get_all_options_by_type,
     get_option_by_id,
-    list_options_by_action,
 )
-from backend.app.repositories.match_repo import (
-    get_match_state,
-    save_match_state,
+from backend.app.services.banco.question_service import (
+    get_next_question_for_player,
 )
-from backend.app.services.match_mission_service import (
+from backend.app.services.redis.match_mission_service import (
     final_round_verify,
     start_round_verify,
 )
-
+from backend.app.services.redis.match_service import (
+    build_match_pending_action_question,
+    get_match_by_id,
+    save_match,
+)
+from backend.app.validators import (
+    verifty_pending_action_question_exist,
+    verify_current_player_turn,
+    verify_match_exist,
+    verify_match_is_running,
+    verify_option_exist,
+    verify_pending_action_question_player,
+    verify_player_exist,
+    verify_target_exist,
+    verify_target_owner,
+)
 
 QUESTION_CORRECT_BONUS = 20
 QUESTION_WRONG_PENALTY = 20
 
-MIN_SUCCESS_CHANCE = 5
-MAX_SUCCESS_CHANCE = 95
+
 
 
 def get_attack_options():
-    return list_options_by_action("attack")
+    return get_all_options_by_type("attack")
 
-
-def resolve_attack_option(
+#antiga resolve_attack_option
+def prepare_attack_option(
     match_id,
     player_id: str,
     target_territory_id: str,
     option_id: str,
 ):
     """
-    Essa função agora NÃO executa o ataque diretamente.
-
-    Ela só:
-    1. valida se a ação pode acontecer;
-    2. pega uma pergunta do jogador;
-    3. salva uma ação pendente no match;
-    4. devolve a pergunta para o front exibir.
+    Essa função:
+    Salva no match uma ação pendente, guardando qual jogador, território, opção e pergunta estão ligados a essa 
+tentativa de ataque.
+    Retorna para o front os dados da ação e da pergunta, para ele saber o que exibir antes de resolver o ataque.
     """
+    match: dict = get_match_by_id(match_id)
+    
+    verify_match_exist(match)
+    verify_match_is_running(match)
+    verify_current_player_turn(player_id)
+    option = get_option_by_id(option_id)
+    
+    verify_option_exist(option)
 
-    match = get_match_state(match_id)
+
+    target = find_territory(match, target_territory_id)
+
+    verify_target_exist(target)
+    verify_target_owner(target,player_id)
+
+    player = find_player(match, player_id)
+    verify_player_exist(player)
+    
+    if match.get("round") % 3 == 0 or "ENZO" == "ENZO":
+        question = get_next_question_for_player(player)
+        match["pending_action_question"]=build_match_pending_action_question(player_id,target_territory_id,option_id,question)
+        save_match(match)
+        action_response=build_action_response_before_question(
+            response_type = "attack_response",
+            player_id = player_id,
+            target= target,
+            target_territory_id = target_territory_id,
+            option =option,
+            question=question
+            )
+        return {
+            "match": match,
+            "action_response":action_response
+        }
+    else:
+        return resolve_attack_no_question(match_id,player_id,target_territory_id, option)
+         
+
+
+def resolve_attack_no_question(
+    match_id,
+    player_id: str,
+    target_territory_id,
+    option,
+):
+    match = get_match_by_id(match_id)
 
     if match is None:
         raise ValueError("Partida não encontrada")
@@ -52,58 +112,63 @@ def resolve_attack_option(
     if match["current_turn_player_id"] != player_id:
         raise ValueError("Não é o turno desse jogador")
 
-    option = get_option_by_id(option_id)
+    action_result = execute_attack_roll(
+        match=match,
+        player_id=player_id,
+        target_territory_id=target_territory_id,
+        option=option,
+        success_chance=option["success_chance"],
+    )
 
-    if option is None:
-        raise ValueError("Opção inválida")
+    match.pop("pending_action_question", None)
 
-    target = find_territory(match, target_territory_id)
+    match["last_action_result"] = action_result
 
-    if target is None:
-        raise ValueError("Território não encontrado")
+    save_match(match)
 
-    if target["owner_id"] == player_id:
-        raise ValueError("Você já controla esse território")
+    won = final_round_verify(match_id, player_id)
 
-    player = find_player(match, player_id)
+    if won:
+        match = get_match_by_id(match_id)
+        match["status"] = "finished"
+        match["winner_id"] = player_id
+        match["last_action_result"] = action_result
+        save_match(match)
 
-    if player is None:
-        raise ValueError("Jogador não encontrado")
+        return {
+            "match": match,
+            "result": {
+                **action_result,
+                "next_turn_player_id": match["current_turn_player_id"],
+                "round": match["round"],
+                "winner_id": player_id,
+                "status": "finished",
+            },
+        }
 
-    question = get_next_question_for_player(player)
+    match = get_match_by_id(match_id)
 
-    match["pending_attack_question"] = {
-        "player_id": player_id,
-        "target_territory_id": target_territory_id,
-        "option_id": option_id,
-        "question_id": question["question_id"],
-        "correct_answer": question["answer"],
-    }
+    advance_turn(match)
 
-    save_match_state(match)
+    save_match(match)
+
+    start_round_verify(match_id, match["current_turn_player_id"])
+
+    match = get_match_by_id(match_id)
+    match["last_action_result"] = action_result
+
+    save_match(match)
 
     return {
         "match": match,
         "result": {
-            "type": "attack_question",
-            "player_id": player_id,
-            "target_territory_id": target_territory_id,
-            "territory_id": target_territory_id,
-            "territory_name": target["name"],
-            "option_id": option["option_id"],
-            "title": option["title"],
-            "description": option["description"],
-            "risk_level": option["risk_level"],
-            "cost_money": option["cost_money"],
-            "success_chance": option["success_chance"],
-            "question": {
-                "question_id": question["question_id"],
-                "subject": question["subject"],
-                "description": question["description"],
-            },
+            **action_result,
+            "next_turn_player_id": match["current_turn_player_id"],
+            "round": match["round"],
+            "winner_id": match.get("winner_id"),
+            "status": match["status"],
         },
     }
-
 
 def resolve_attack_question(
     match_id,
@@ -122,52 +187,38 @@ def resolve_attack_question(
     6. avança turno.
     """
 
-    match = get_match_state(match_id)
+    match : dict = get_match_by_id(match_id)
 
-    if match is None:
-        raise ValueError("Partida não encontrada")
+    verify_match_exist(match)
+    verify_match_is_running(match)
+    verify_current_player_turn(match,player_id)
+    
+    pending_action_question: dict = match.get("pending_action_question")
 
-    if match["status"] != "running":
-        raise ValueError("Partida não está em andamento")
+    verifty_pending_action_question_exist(pending_action_question)
+    verify_pending_action_question_player(pending_action_question,player_id)
 
-    pending_question = match.get("pending_attack_question")
-
-    if pending_question is None:
-        raise ValueError("Não existe pergunta pendente para essa ação")
-
-    if pending_question["player_id"] != player_id:
-        raise ValueError("Essa pergunta não pertence a esse jogador")
-
-    if match["current_turn_player_id"] != player_id:
-        raise ValueError("Não é o turno desse jogador")
-
-    target_territory_id = pending_question["target_territory_id"]
-    option_id = pending_question["option_id"]
+    target_territory_id = pending_action_question["target_territory_id"]
+    option_id = pending_action_question["option_id"]
 
     option = get_option_by_id(option_id)
 
-    if option is None:
-        raise ValueError("Opção inválida")
+    verify_option_exist(option)
 
     target = find_territory(match, target_territory_id)
 
-    if target is None:
-        raise ValueError("Território não encontrado")
+    verify_target_exist(target)
+    verify_target_owner(target,player_id)
 
-    if target["owner_id"] == player_id:
-        raise ValueError("Você já controla esse território")
-
-    correct_answer = pending_question["correct_answer"]
-    question_was_correct = answer == correct_answer
+    correct_answer = pending_action_question["correct_answer"]
+    question_was_correct = (answer == correct_answer)
 
     base_success_chance = option["success_chance"]
 
-    if question_was_correct:
-        adjusted_success_chance = base_success_chance + QUESTION_CORRECT_BONUS
-    else:
-        adjusted_success_chance = base_success_chance - QUESTION_WRONG_PENALTY
-
-    adjusted_success_chance = clamp_success_chance(adjusted_success_chance)
+    adjusted_success_chance,=adjust_success_chance_by_answer(
+        base_success_chance=base_success_chance,
+        question_was_correct=question_was_correct
+        )
 
     action_result = execute_attack_roll(
         match=match,
@@ -179,23 +230,21 @@ def resolve_attack_question(
         question_was_correct=question_was_correct,
         correct_answer=correct_answer,
         player_answer=answer,
-        question_id=pending_question["question_id"],
+        question_id=pending_action_question.get("question_id"),
     )
-
-    match.pop("pending_attack_question", None)
+    match.pop("pending_action_question", None)
 
     match["last_action_result"] = action_result
 
-    save_match_state(match)
+    save_match(match)
 
     won = final_round_verify(match_id, player_id)
 
     if won:
-        match = get_match_state(match_id)
         match["status"] = "finished"
         match["winner_id"] = player_id
         match["last_action_result"] = action_result
-        save_match_state(match)
+        save_match(match)
 
         return {
             "match": match,
@@ -208,18 +257,18 @@ def resolve_attack_question(
             },
         }
 
-    match = get_match_state(match_id)
+    match = get_match_by_id(match_id)
 
     advance_turn(match)
 
-    save_match_state(match)
+    save_match(match)
 
     start_round_verify(match_id, match["current_turn_player_id"])
 
-    match = get_match_state(match_id)
+    match = get_match_by_id(match_id)
     match["last_action_result"] = action_result
 
-    save_match_state(match)
+    save_match(match)
 
     return {
         "match": match,
@@ -254,8 +303,7 @@ def execute_attack_roll(
 
     target = find_territory(match, target_territory_id)
 
-    if target is None:
-        raise ValueError("Território não encontrado")
+    verify_target_exist(target)
 
     roll = random.randint(1, 100)
     minimum_roll_to_succeed = 100 - adjusted_success_chance
@@ -327,16 +375,6 @@ def execute_attack_roll(
     return action_result
 
 
-def get_next_question_for_player(player: dict):
-    questions = player.get("questions", [])
-
-    if not questions:
-        raise ValueError("Esse jogador não possui mais perguntas disponíveis")
-
-    question = questions.pop(0)
-
-    return question
-
 
 def find_player(match: dict, player_id: str):
     for player in match["players"]:
@@ -352,10 +390,6 @@ def find_territory(match: dict, territory_id: str):
             return territory
 
     return None
-
-
-def clamp_success_chance(success_chance: int):
-    return max(MIN_SUCCESS_CHANCE, min(MAX_SUCCESS_CHANCE, success_chance))
 
 
 def advance_turn(match: dict):

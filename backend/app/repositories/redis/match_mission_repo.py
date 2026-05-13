@@ -1,5 +1,5 @@
-from backend.app.repositories.match_repo import get_match_state, save_match_state
-
+from backend.app.repositories.redis.match_repo import (get_match_state, save_match_state)
+from backend.app.db.redis import redis_client
 
 def get_all_match_missions(match_id):
     match_dict = get_match_state(match_id)
@@ -74,3 +74,13 @@ def update_match_mission(match_id, updated_match_mission):
             return updated_match_mission
 
     raise ValueError("Missão do jogador não encontrada.")
+
+
+def get_match_mission_by_owner_repo(player_id,match_id):
+    key = f"match:{match_id}:state"
+    match_state : dict =redis_client.get(key)
+    for mission in match_state.get("missions"):
+        mission :dict
+        if mission.get('owner_id') == player_id:
+            return mission
+    return None

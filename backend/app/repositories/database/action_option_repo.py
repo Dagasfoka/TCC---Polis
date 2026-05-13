@@ -1,4 +1,7 @@
-from backend.app.models.action_option import ActionOption
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from backend.app.models.database.action_option_model import Action_Option, ActionOption
 
 ATTACK_OPTIONS = [
     ActionOption(
@@ -38,9 +41,19 @@ def list_options_by_action(action_type: str):
     ]
 
 
-def get_option_by_id(option_id: str):
+def get_option_by_id_repo(option_id: str):
     for option in ATTACK_OPTIONS:
         if option.option_id == option_id:
             return option.to_dict()
 
     return None
+
+def get_all_action_options_dict(db: Session) -> list[dict]:
+    return [action_option.to_dict() for action_option in db.scalars(select(Action_Option)).all()]
+
+def get_all_action_options(db: Session) -> list[Action_Option]:
+    return list (db.scalars(select(Action_Option)).all())
+
+
+def get_action_option_by_id(db: Session, Action_Option_id: int) -> dict | None:
+    return db.get(Action_Option, Action_Option_id).to_dict()

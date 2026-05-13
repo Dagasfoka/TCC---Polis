@@ -2,7 +2,7 @@
 from json import dumps, loads
 
 from backend.app.db.redis import redis_client
-from backend.app.models.player import Player
+from backend.app.models.redis.player_model import Player
 from backend.app.utils.ids import generate_player_id
 
 
@@ -32,4 +32,5 @@ def get_player_repo(player_id):
 
     return None
 def get_all_players():
-    key='player:*'
+    key = "player"
+    redis_client.get(key)

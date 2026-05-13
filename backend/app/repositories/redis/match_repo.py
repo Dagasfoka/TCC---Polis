@@ -10,7 +10,7 @@ def incr_match_round(match_id):
 def generate_match_id() -> int:
     return redis_client.incr("match:counter")
         
-def save_match_state(match_state_dict):
+def save_match_repo(match_state_dict):
     match_state_JSON=  dumps(match_state_dict)
     key = f"match:{match_state_dict['match_id']}:state"
     redis_client.set(key,match_state_JSON)
