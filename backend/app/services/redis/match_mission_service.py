@@ -2,11 +2,11 @@ from backend.app.factories.redis.match_mission_factory import (
     final_verify_match_mission,
     start_verify_match_mission,
 )
-from backend.app.validators.match_mission_validator import (
-    verify_match_mission_exist,
-)
 from backend.app.services.redis.match_service import (
     get_match_mission_by_owner_service,
+)
+from backend.app.validators.match_mission_validator import (
+    verify_match_mission_exist,
 )
 
 

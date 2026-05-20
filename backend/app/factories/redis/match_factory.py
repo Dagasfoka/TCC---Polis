@@ -11,7 +11,7 @@ from backend.app.repositories.database.question_repo import list_questions
 from backend.app.repositories.database.territory_repo import get_all_territories
 from backend.app.repositories.redis.match_repo import generate_match_id
 
-
+###ERRO Importações conceituais erradas, teria de importar outros services
 def build_initial_match_state(db, room_dict) -> Match:
     territories = get_all_territories(db)
     match_territories = []
@@ -26,7 +26,7 @@ def build_initial_match_state(db, room_dict) -> Match:
             region=territory_data.region,
         )
         match_territories.append(match_territory)
-    match_state = Match(
+    match_state = Match( #Create no repo
         match_id=match_id,
         territories=match_territories,
         room_code=room_dict["room_code"],
@@ -49,8 +49,7 @@ def build_match_pending_action_question_factory(match:dict,player_id:str,target_
         }
     return match
 
-
-def distribute_initial_territories_missions_questions(db, match_state_dict):
+def distribute_initial_territories_missions_questions(db,match_state_dict):
     players = match_state_dict["players"]
 
     questions = list_questions()

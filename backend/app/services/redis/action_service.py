@@ -36,13 +36,14 @@ from backend.app.validators import (
 
 QUESTION_CORRECT_BONUS = 20
 QUESTION_WRONG_PENALTY = 20
-
-
+#ERRO?
+#DIFF : HIGH MULTIVERSE ++
 
 
 def get_attack_options():
     return get_all_options_by_type("attack")
 
+#ERROR? def mt grande
 #antiga resolve_attack_option
 def prepare_attack_option(
     match_id,
@@ -73,8 +74,9 @@ tentativa de ataque.
 
     player = find_player(match, player_id)
     verify_player_exist(player)
-    
+
     if match.get("round") % 3 == 0 or "ENZO" == "ENZO":
+        # ERRO{
         question = get_next_question_for_player(player)
         match["pending_action_question"]=build_match_pending_action_question(player_id,target_territory_id,option_id,question)
         save_match(match)
@@ -90,11 +92,13 @@ tentativa de ataque.
             "match": match,
             "action_response":action_response
         }
+    # } ERRO
+    #Diff : MID
     else:
         return resolve_attack_no_question(match_id,player_id,target_territory_id, option)
-         
+    
 
-
+#ERRO{
 def resolve_attack_no_question(
     match_id,
     player_id: str,
@@ -169,7 +173,9 @@ def resolve_attack_no_question(
             "status": match["status"],
         },
     }
-
+# }ERRO
+# Diff : HIGH
+#ERRO {
 def resolve_attack_question(
     match_id,
     player_id: str,
@@ -281,7 +287,9 @@ def resolve_attack_question(
         },
     }
 
-
+# }ERRO
+# Diff : HIGH
+#ERRO {
 def execute_attack_roll(
     match: dict,
     player_id: str,
@@ -373,25 +381,28 @@ def execute_attack_roll(
     }
 
     return action_result
+# }ERRO
+# Diff : HIGH
 
-
-
+#ERRO{
 def find_player(match: dict, player_id: str):
     for player in match["players"]:
         if player["player_id"] == player_id:
             return player
 
     return None
-
-
+#}ERRO
+#DIFF : EASY
+#ERRO {
 def find_territory(match: dict, territory_id: str):
     for territory in match["territories"]:
         if territory["territory_id"] == territory_id:
             return territory
 
     return None
-
-
+#}ERRO
+#DIFF : EASY
+#ERRO {
 def advance_turn(match: dict):
     players = match["players"]
     current_player_id = match["current_turn_player_id"]
@@ -409,3 +420,5 @@ def advance_turn(match: dict):
         match["round"] += 1
 
     match["current_turn_player_id"] = players[next_index]["player_id"]
+#} ERRO 
+# DIFF : LOW-MID

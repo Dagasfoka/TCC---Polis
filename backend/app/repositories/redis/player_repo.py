@@ -5,6 +5,8 @@ from backend.app.db.redis import redis_client
 from backend.app.models.redis.player_model import Player
 from backend.app.utils.ids import generate_player_id
 
+### ERRO Mudar as validações para validators
+#DIFF : VERY EASY
 
 def save_player(username=None, party_id=None):
     player_id = generate_player_id()

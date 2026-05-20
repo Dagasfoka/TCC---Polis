@@ -4,7 +4,6 @@ QUESTION_WRONG_PENALTY = 10
 MIN_SUCCESS_CHANCE = 5
 MAX_SUCCESS_CHANCE = 95
 
-
 def adjust_success_chance_by_answer(
     base_success_chance: int,
     question_was_correct: bool,

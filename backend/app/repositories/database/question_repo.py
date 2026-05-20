@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from backend.app.models.database.question_model import Question
 
+#ERRO {
 QUESTIONS_OPTIONS = [
     {
         "question_id":1,
@@ -53,8 +54,12 @@ QUESTIONS_OPTIONS = [
         "answer":True,
     },
 ]
+# } ERRO
+# -> criar script pra criação das QuestionOptions
+#DIFF : EASY
 
-
+### ERRO Mudar todas as variáveis QUESTIONS_OPTIONS 
+#DIFF : EASY
 def list_questions():
     return [
         question

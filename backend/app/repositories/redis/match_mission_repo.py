@@ -1,9 +1,12 @@
-from backend.app.repositories.redis.match_repo import (get_match_state, save_match_state)
 from backend.app.db.redis import redis_client
+from backend.app.repositories.redis.match_repo import get_match_state, save_match_state
 
+###ERRO Substituir lógica de get_match_state e save_match_state para save_missions 
+#Diff : MID
+###ERRO Substituir os raises  por funções validators válidas
+#Diff : EASY
 def get_all_match_missions(match_id):
     match_dict = get_match_state(match_id)
-
     if match_dict is None:
         raise ValueError("Partida não encontrada.")
 
@@ -66,7 +69,7 @@ def update_match_mission(match_id, updated_match_mission):
         raise ValueError("Partida não encontrada.")
 
     missions = match_dict.get("missions", [])
-
+ #ERRO Lógica de validação
     for index, mission in enumerate(missions):
         if mission["owner_id"] == updated_match_mission["owner_id"]:
             missions[index] = updated_match_mission

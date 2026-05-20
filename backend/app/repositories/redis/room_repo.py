@@ -3,6 +3,8 @@ from json import dumps, loads
 
 from backend.app.db.redis import redis_client
 
+### ERRO Mudar as validações para validators
+#DIFF : VERY EASY
 
 def get_room_repo(room_code) -> dict | None:
     key = f"room:{room_code}"

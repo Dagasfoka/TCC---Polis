@@ -3,7 +3,8 @@ from json import dumps, loads
 
 from backend.app.db.redis import redis_client
 
-
+### ERRO Mudar as validações para validators  
+#DIFF: EASY
 def incr_match_round(match_id):
     return redis_client.incr(f"match:{match_id}:round")
 

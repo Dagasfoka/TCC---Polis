@@ -10,3 +10,4 @@ def generate_room_code(length=6):
 
 def generate_player_id():
     return str(uuid.uuid4())
+

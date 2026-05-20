@@ -2,7 +2,7 @@ from backend.app.validators.question_validator import verify_questions_exist
 
 
 def get_next_question_for_player(player: dict):
-    questions = player.get("questions", [])
+    questions : dict = player.get("questions", [])
 
     verify_questions_exist(questions)
 

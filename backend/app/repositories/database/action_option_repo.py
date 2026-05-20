@@ -2,8 +2,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend.app.models.database.action_option_model import Action_Option, ActionOption
-
-ATTACK_OPTIONS = [
+# ERRO{
+ATTACK_OPTIONS = [ 
     ActionOption(
         option_id="safe_company",
         action_type="attack",
@@ -31,8 +31,12 @@ ATTACK_OPTIONS = [
         risk_level="alto",
     ),
 ]
+# }ERRO
+# -> criar script pra criação das ActionOption
+#DIFF : EASY
 
-
+### ERRO Mudar todas as variáveis ATTACK_OPTIONS 
+#DIFF : EASY
 def list_options_by_action(action_type: str):
     return [
         option.to_dict()
